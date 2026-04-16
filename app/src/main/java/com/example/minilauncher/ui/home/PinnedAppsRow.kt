@@ -2,8 +2,9 @@ package com.example.minilauncher.ui.home
 
 import android.graphics.drawable.Drawable
 import android.widget.ImageView
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,10 +31,12 @@ import com.example.minilauncher.data.AppRepository
 import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.model.AppInfo
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PinnedAppsRow(
     appRepository: AppRepository,
     preferencesManager: PreferencesManager,
+    onAppLongPress: (AppInfo) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val apps by appRepository.apps.collectAsStateWithLifecycle()
@@ -61,22 +64,26 @@ fun PinnedAppsRow(
         } else {
             PinnedAppsGridRow(
                 pinnedApps = firstRowApps,
-                onLaunchApp = appRepository::launchApp
+                onLaunchApp = appRepository::launchApp,
+                onAppLongPress = onAppLongPress
             )
             if (secondRowApps.isNotEmpty()) {
                 PinnedAppsGridRow(
                     pinnedApps = secondRowApps,
-                    onLaunchApp = appRepository::launchApp
+                    onLaunchApp = appRepository::launchApp,
+                    onAppLongPress = onAppLongPress
                 )
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PinnedAppsGridRow(
     pinnedApps: List<AppInfo>,
-    onLaunchApp: (String) -> Unit
+    onLaunchApp: (String) -> Unit,
+    onAppLongPress: (AppInfo) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -92,7 +99,10 @@ private fun PinnedAppsGridRow(
                         .weight(1f)
                         .padding(horizontal = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .clickable { onLaunchApp(appInfo.packageName) }
+                        .combinedClickable(
+                            onClick = { onLaunchApp(appInfo.packageName) },
+                            onLongClick = { onAppLongPress(appInfo) }
+                        )
                         .padding(horizontal = 4.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {

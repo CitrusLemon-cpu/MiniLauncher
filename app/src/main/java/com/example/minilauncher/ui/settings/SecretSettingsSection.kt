@@ -56,6 +56,7 @@ fun SecretSettingsSection(
     val hiddenApps by preferencesManager.hiddenApps.collectAsStateWithLifecycle(initialValue = emptySet())
     val hiddenUsageApps by preferencesManager.hiddenUsageApps.collectAsStateWithLifecycle(initialValue = emptySet())
     val preventDeletion by preferencesManager.preventDeletion.collectAsStateWithLifecycle(initialValue = false)
+    val requirePasswordToHide by preferencesManager.requirePasswordToHide.collectAsStateWithLifecycle(initialValue = false)
     val passwordHash by preferencesManager.passwordHash.collectAsStateWithLifecycle(initialValue = "")
     var pendingUnhideApp by remember { mutableStateOf<AppInfo?>(null) }
     var pendingUnhideUsageApp by remember { mutableStateOf<AppInfo?>(null) }
@@ -109,6 +110,17 @@ fun SecretSettingsSection(
             onCheckedChange = { enabled ->
                 coroutineScope.launch {
                     preferencesManager.setPreventDeletion(enabled)
+                }
+            }
+        )
+
+        SecretToggleRow(
+            title = "Require Password to Hide Apps",
+            subtitle = "Enter password before hiding an app",
+            checked = requirePasswordToHide,
+            onCheckedChange = { enabled ->
+                coroutineScope.launch {
+                    preferencesManager.setRequirePasswordToHide(enabled)
                 }
             }
         )

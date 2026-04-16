@@ -2,13 +2,18 @@ package com.example.minilauncher.ui.home
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,8 +32,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.minilauncher.data.AppRepository
 import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.data.UsageRepository
+import com.example.minilauncher.model.AppInfo
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     appRepository: AppRepository,
@@ -41,6 +48,7 @@ fun HomeScreen(
     }
     val hasSeenPrompt by preferencesManager.hasSeenLauncherPrompt.collectAsStateWithLifecycle(initialValue = true)
     var showLauncherPrompt by remember { mutableStateOf(false) }
+    var selectedPinnedApp by remember { mutableStateOf<AppInfo?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -92,6 +100,7 @@ fun HomeScreen(
         PinnedAppsRow(
             appRepository = appRepository,
             preferencesManager = preferencesManager,
+            onAppLongPress = { appInfo -> selectedPinnedApp = appInfo },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 8.dp)
@@ -124,5 +133,38 @@ fun HomeScreen(
                 }
             }
         )
+    }
+
+    selectedPinnedApp?.let { appInfo ->
+        ModalBottomSheet(
+            onDismissRequest = { selectedPinnedApp = null },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = appInfo.label,
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                Text(
+                    text = "Remove from Home",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            coroutineScope.launch {
+                                preferencesManager.removePinnedApp(appInfo.packageName)
+                                selectedPinnedApp = null
+                            }
+                        }
+                        .padding(vertical = 16.dp)
+                )
+            }
+        }
     }
 }
