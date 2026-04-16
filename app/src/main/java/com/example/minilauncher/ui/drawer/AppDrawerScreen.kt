@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.minilauncher.data.AppRepository
 import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.model.AppInfo
+import com.example.minilauncher.ui.settings.PasswordEntryDialog
 import kotlinx.coroutines.launch
 
 @Composable
@@ -47,8 +51,12 @@ fun AppDrawerScreen(
     val pinnedApps by preferencesManager.pinnedApps.collectAsStateWithLifecycle(initialValue = emptySet())
     val showIcons by preferencesManager.showIcons.collectAsStateWithLifecycle(initialValue = true)
     val preventDeletion by preferencesManager.preventDeletion.collectAsStateWithLifecycle(initialValue = false)
+    val requirePasswordToHide by preferencesManager.requirePasswordToHide.collectAsStateWithLifecycle(initialValue = false)
+    val passwordHash by preferencesManager.passwordHash.collectAsStateWithLifecycle(initialValue = "")
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedApp by remember { mutableStateOf<AppInfo?>(null) }
+    var appPendingHide by remember { mutableStateOf<AppInfo?>(null) }
+    var showHidePasswordDialog by remember { mutableStateOf(false) }
 
     val filteredApps = remember(apps, hiddenApps, searchQuery) {
         apps.filter { appInfo ->
@@ -132,10 +140,8 @@ fun AppDrawerScreen(
                 selectedApp = null
             },
             onHide = {
-                coroutineScope.launch {
-                    preferencesManager.setHiddenApp(appInfo.packageName, true)
-                    selectedApp = null
-                }
+                appPendingHide = appInfo
+                selectedApp = null
             },
             onPinToggle = {
                 coroutineScope.launch {
@@ -157,6 +163,56 @@ fun AppDrawerScreen(
                         appInfo.packageName !in hiddenUsageApps
                     )
                     selectedApp = null
+                }
+            }
+        )
+    }
+
+    appPendingHide?.let { appInfo ->
+        if (!showHidePasswordDialog) {
+            if (requirePasswordToHide && passwordHash.isNotBlank()) {
+                LaunchedEffect(appInfo) {
+                    showHidePasswordDialog = true
+                }
+            } else {
+                AlertDialog(
+                    onDismissRequest = { appPendingHide = null },
+                    title = { Text("Hide App") },
+                    text = { Text("Are you sure you want to hide ${appInfo.label}?") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            coroutineScope.launch {
+                                preferencesManager.setHiddenApp(appInfo.packageName, true)
+                                appPendingHide = null
+                            }
+                        }) {
+                            Text("Hide")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { appPendingHide = null }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    if (showHidePasswordDialog && appPendingHide != null) {
+        PasswordEntryDialog(
+            storedHash = passwordHash,
+            onDismiss = {
+                showHidePasswordDialog = false
+                appPendingHide = null
+            },
+            onSuccess = {
+                coroutineScope.launch {
+                    appPendingHide?.let { appInfo ->
+                        preferencesManager.setHiddenApp(appInfo.packageName, true)
+                    }
+                    showHidePasswordDialog = false
+                    appPendingHide = null
                 }
             }
         )

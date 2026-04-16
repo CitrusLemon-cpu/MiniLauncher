@@ -40,6 +40,10 @@ class PreferencesManager private constructor(
         .catchPreferences()
         .map { preferences -> preferences[PREVENT_DELETION] ?: false }
 
+    val requirePasswordToHide: Flow<Boolean> = context.dataStore.data
+        .catchPreferences()
+        .map { preferences -> preferences[REQUIRE_PASSWORD_TO_HIDE] ?: false }
+
     val weekStartDay: Flow<Int> = context.dataStore.data
         .catchPreferences()
         .map { preferences -> preferences[WEEK_START_DAY] ?: Calendar.SUNDAY }
@@ -99,6 +103,12 @@ class PreferencesManager private constructor(
         }
     }
 
+    suspend fun setRequirePasswordToHide(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[REQUIRE_PASSWORD_TO_HIDE] = enabled
+        }
+    }
+
     suspend fun setWeekStartDay(day: Int) {
         context.dataStore.edit { preferences ->
             preferences[WEEK_START_DAY] = day
@@ -144,6 +154,7 @@ class PreferencesManager private constructor(
         private val HIDDEN_USAGE_APPS = stringSetPreferencesKey("hidden_usage_apps")
         private val SHOW_ICONS = booleanPreferencesKey("show_icons")
         private val PREVENT_DELETION = booleanPreferencesKey("prevent_deletion")
+        private val REQUIRE_PASSWORD_TO_HIDE = booleanPreferencesKey("require_password_to_hide")
         private val WEEK_START_DAY = intPreferencesKey("week_start_day")
         private val PASSWORD_HASH = stringPreferencesKey("password_hash")
         private val HAS_SEEN_LAUNCHER_PROMPT = booleanPreferencesKey("has_seen_launcher_prompt")
