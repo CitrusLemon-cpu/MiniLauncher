@@ -1,6 +1,9 @@
 package com.example.minilauncher.ui.settings
 
-import java.util.Calendar
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +28,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.minilauncher.data.AppRepository
 import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.data.UsageRepository
+import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -51,7 +56,26 @@ fun SettingsScreen(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val showIcons by preferencesManager.showIcons.collectAsStateWithLifecycle(initialValue = true)
     val weekStartDay by preferencesManager.weekStartDay.collectAsStateWithLifecycle(initialValue = Calendar.SUNDAY)
+    val hiddenApps by preferencesManager.hiddenApps.collectAsStateWithLifecycle(initialValue = emptySet())
     val hiddenUsageApps by preferencesManager.hiddenUsageApps.collectAsStateWithLifecycle(initialValue = emptySet())
+    val passwordHash by preferencesManager.passwordHash.collectAsStateWithLifecycle(initialValue = "")
+    val apps by appRepository.apps.collectAsStateWithLifecycle()
+    var secretSettingsVisible by remember { mutableStateOf(false) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var showSetPasswordDialog by remember { mutableStateOf(false) }
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+
+    val staleHiddenPackages = remember(apps, hiddenApps) {
+        hiddenApps.filterTo(mutableSetOf()) { packageName ->
+            apps.none { it.packageName == packageName } && appRepository.getAppInfo(packageName) == null
+        }
+    }
+
+    LaunchedEffect(staleHiddenPackages) {
+        staleHiddenPackages.forEach { packageName ->
+            preferencesManager.setHiddenApp(packageName, false)
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -123,12 +147,68 @@ fun SettingsScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
             Button(
-                onClick = {},
+                onClick = {
+                    when {
+                        secretSettingsVisible -> secretSettingsVisible = false
+                        passwordHash.isBlank() -> secretSettingsVisible = true
+                        else -> showPasswordDialog = true
+                    }
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = "Secret Settings")
             }
+
+            AnimatedVisibility(
+                visible = secretSettingsVisible,
+                enter = expandVertically(animationSpec = tween(300)),
+                exit = shrinkVertically(animationSpec = tween(300))
+            ) {
+                SecretSettingsSection(
+                    appRepository = appRepository,
+                    preferencesManager = preferencesManager,
+                    onSetPasswordClick = { showSetPasswordDialog = true },
+                    onChangePasswordClick = { showChangePasswordDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
+    }
+
+    if (showPasswordDialog) {
+        PasswordEntryDialog(
+            storedHash = passwordHash,
+            onDismiss = { showPasswordDialog = false },
+            onSuccess = {
+                showPasswordDialog = false
+                secretSettingsVisible = true
+            }
+        )
+    }
+
+    if (showSetPasswordDialog) {
+        SetPasswordDialog(
+            onDismiss = { showSetPasswordDialog = false },
+            onSetPassword = { hash ->
+                coroutineScope.launch {
+                    preferencesManager.setPasswordHash(hash)
+                    showSetPasswordDialog = false
+                }
+            }
+        )
+    }
+
+    if (showChangePasswordDialog && passwordHash.isNotBlank()) {
+        ChangePasswordDialog(
+            storedHash = passwordHash,
+            onDismiss = { showChangePasswordDialog = false },
+            onChangePassword = { hash ->
+                coroutineScope.launch {
+                    preferencesManager.setPasswordHash(hash)
+                    showChangePasswordDialog = false
+                }
+            }
+        )
     }
 }
 
