@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -64,6 +65,7 @@ fun UsageHistoryCalendar(
     hiddenUsageApps: Set<String>,
     weekStartDay: Int,
     showIcons: Boolean,
+    showZeroMinuteApps: Boolean,
     modifier: Modifier = Modifier
 ) {
     var hasUsagePermission by remember(usageRepository) {
@@ -200,11 +202,13 @@ fun UsageHistoryCalendar(
             } else {
                 DayBreakdownSection(
                     detailState = detailState,
-                    showIcons = showIcons
+                    showIcons = showIcons,
+                    showZeroMinuteApps = showZeroMinuteApps
                 )
                 WeekSummarySection(
                     detailState = detailState,
-                    showIcons = showIcons
+                    showIcons = showIcons,
+                    showZeroMinuteApps = showZeroMinuteApps
                 )
             }
         }
@@ -346,9 +350,20 @@ private fun CalendarMonthGrid(
 @Composable
 private fun DayBreakdownSection(
     detailState: UsageHistoryDetailState,
-    showIcons: Boolean
+    showIcons: Boolean,
+    showZeroMinuteApps: Boolean
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.getDefault()) }
+    var isExpanded by remember(detailState.selectedDate) { mutableStateOf(false) }
+    val filteredEntries = remember(detailState.dayEntries, showZeroMinuteApps) {
+        if (showZeroMinuteApps) {
+            detailState.dayEntries
+        } else {
+            detailState.dayEntries.filter { it.duration >= 60_000L }
+        }
+    }
+    val visibleEntries = if (isExpanded) filteredEntries else filteredEntries.take(10)
+    val hasMore = filteredEntries.size > 10 && !isExpanded
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -362,15 +377,15 @@ private fun DayBreakdownSection(
             color = MaterialTheme.colorScheme.onSurface
         )
 
-        if (detailState.dayEntries.isEmpty()) {
+        if (filteredEntries.isEmpty()) {
             Text(
                 text = "No usage recorded for this day",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            val maxDuration = detailState.dayEntries.maxOfOrNull { it.duration } ?: 0L
-            detailState.dayEntries.forEach { item ->
+            val maxDuration = filteredEntries.maxOfOrNull { it.duration } ?: 0L
+            visibleEntries.forEach { item ->
                 UsageBarRow(
                     item = item,
                     fraction = normalizedDuration(item.duration, maxDuration),
@@ -379,6 +394,15 @@ private fun DayBreakdownSection(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            if (hasMore) {
+                TextButton(
+                    onClick = { isExpanded = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Show ${filteredEntries.size - 10} more apps")
+                }
+            }
         }
     }
 }
@@ -386,9 +410,17 @@ private fun DayBreakdownSection(
 @Composable
 private fun WeekSummarySection(
     detailState: UsageHistoryDetailState,
-    showIcons: Boolean
+    showIcons: Boolean,
+    showZeroMinuteApps: Boolean
 ) {
     val rangeFormatter = remember { DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()) }
+    val filteredEntries = remember(detailState.weekEntries, showZeroMinuteApps) {
+        if (showZeroMinuteApps) {
+            detailState.weekEntries
+        } else {
+            detailState.weekEntries.filter { it.duration >= 60_000L }
+        }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
@@ -407,15 +439,15 @@ private fun WeekSummarySection(
             color = MaterialTheme.colorScheme.onSurface
         )
 
-        if (detailState.weekEntries.isEmpty()) {
+        if (filteredEntries.isEmpty()) {
             Text(
                 text = "No usage recorded for this week",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
-            val maxDuration = detailState.weekEntries.maxOfOrNull { it.duration } ?: 0L
-            detailState.weekEntries.take(5).forEach { item ->
+            val maxDuration = filteredEntries.maxOfOrNull { it.duration } ?: 0L
+            filteredEntries.take(5).forEach { item ->
                 UsageBarRow(
                     item = item,
                     fraction = normalizedDuration(item.duration, maxDuration),

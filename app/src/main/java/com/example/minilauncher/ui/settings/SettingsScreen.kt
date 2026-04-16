@@ -1,5 +1,6 @@
 package com.example.minilauncher.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -54,6 +55,8 @@ fun SettingsScreen(
     usageRepository: UsageRepository,
     onNavigateBack: () -> Unit
 ) {
+    BackHandler(onBack = onNavigateBack)
+
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val showIcons by preferencesManager.showIcons.collectAsStateWithLifecycle(initialValue = true)
     val weekStartDay by preferencesManager.weekStartDay.collectAsStateWithLifecycle(initialValue = Calendar.SUNDAY)
@@ -66,6 +69,7 @@ fun SettingsScreen(
     val scrollState = rememberScrollState()
     var showSetPasswordDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showZeroMinuteApps by remember { mutableStateOf(false) }
 
     val staleHiddenPackages = remember(apps, hiddenApps) {
         hiddenApps.filterTo(mutableSetOf()) { packageName ->
@@ -150,7 +154,16 @@ fun SettingsScreen(
                 hiddenUsageApps = hiddenUsageApps,
                 weekStartDay = weekStartDay,
                 showIcons = showIcons,
+                showZeroMinuteApps = showZeroMinuteApps,
                 modifier = Modifier.fillMaxWidth()
+            )
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+
+            SettingsToggleRow(
+                title = "Show Apps with 0m Usage",
+                checked = showZeroMinuteApps,
+                onCheckedChange = { showZeroMinuteApps = it }
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
