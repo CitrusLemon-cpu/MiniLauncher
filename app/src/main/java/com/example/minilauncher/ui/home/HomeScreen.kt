@@ -79,7 +79,8 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
-                .align(Alignment.Center)
+                .align(Alignment.TopCenter)
+                .padding(top = 140.dp)
         ) {
             if (hasUsagePermission) {
                 UsageChart(
