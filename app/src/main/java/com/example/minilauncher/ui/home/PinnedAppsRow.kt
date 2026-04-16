@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.weight
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,6 +29,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.minilauncher.data.AppRepository
 import com.example.minilauncher.data.PreferencesManager
+import com.example.minilauncher.model.AppInfo
 
 @Composable
 fun PinnedAppsRow(
@@ -39,34 +42,71 @@ fun PinnedAppsRow(
     val pinnedApps = pinnedPackages.mapNotNull { packageName ->
         apps.firstOrNull { it.packageName == packageName } ?: appRepository.getAppInfo(packageName)
     }
+    val firstRowApps = pinnedApps.take(5)
+    val secondRowApps = pinnedApps.drop(5).take(5)
 
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         if (pinnedApps.isEmpty()) {
-            repeat(5) {
-                EmptyPinnedSlot()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(5) {
+                    EmptyPinnedSlot()
+                }
             }
         } else {
-            pinnedApps.forEach { appInfo ->
+            PinnedAppsGridRow(
+                pinnedApps = firstRowApps,
+                onLaunchApp = appRepository::launchApp
+            )
+            if (secondRowApps.isNotEmpty()) {
+                PinnedAppsGridRow(
+                    pinnedApps = secondRowApps,
+                    onLaunchApp = appRepository::launchApp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinnedAppsGridRow(
+    pinnedApps: List<AppInfo>,
+    onLaunchApp: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        repeat(5) { index ->
+            val appInfo = pinnedApps.getOrNull(index)
+            if (appInfo == null) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
                 Column(
                     modifier = Modifier
-                        .padding(horizontal = 6.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { appRepository.launchApp(appInfo.packageName) }
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                        .weight(1f)
+                        .padding(horizontal = 4.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onLaunchApp(appInfo.packageName) }
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     AppIcon(drawable = appInfo.icon, label = appInfo.label)
                     Text(
                         text = appInfo.label,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         textAlign = TextAlign.Center,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .width(52.dp)
                     )
                 }
             }
@@ -78,9 +118,9 @@ fun PinnedAppsRow(
 private fun EmptyPinnedSlot() {
     Box(
         modifier = Modifier
-            .padding(horizontal = 6.dp)
-            .size(56.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .padding(horizontal = 4.dp)
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
     )
 }
@@ -90,8 +130,8 @@ private fun AppIcon(drawable: Drawable?, label: String) {
     if (drawable == null) {
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(18.dp))
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
             contentAlignment = Alignment.Center
         ) {
@@ -111,7 +151,7 @@ private fun AppIcon(drawable: Drawable?, label: String) {
             imageView.contentDescription = label
         },
         modifier = Modifier
-            .size(56.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
     )
 }
