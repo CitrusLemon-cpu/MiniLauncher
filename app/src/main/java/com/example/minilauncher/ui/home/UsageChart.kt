@@ -7,8 +7,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,17 +27,20 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +57,7 @@ import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.data.UsageRepository
 import com.example.minilauncher.util.formatDuration
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal data class UsageBarItem(
@@ -81,6 +86,8 @@ fun UsageChart(
     var isLoading by remember { mutableStateOf(true) }
     var chartState by remember { mutableStateOf(UsageChartState(emptyList(), emptyList(), 0L)) }
     var showOtherSheet by remember { mutableStateOf(false) }
+    var pendingHidePackage by remember { mutableStateOf<UsageBarItem?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     val barColors = rememberUsageBarColors()
 
     LifecycleResumeEffect(hiddenUsageApps, usageRepository) {
@@ -174,6 +181,11 @@ fun UsageChart(
                                     { showOtherSheet = true }
                                 } else {
                                     null
+                                },
+                                onLongPress = if (!isOtherRow) {
+                                    { pendingHidePackage = item }
+                                } else {
+                                    null
                                 }
                             )
                         }
@@ -227,7 +239,8 @@ fun UsageChart(
                                 maxDuration = chartState.otherItems.maxOfOrNull { other -> other.duration } ?: 0L
                             ),
                             color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.55f),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            onLongPress = { pendingHidePackage = item }
                         )
                     }
                 }
@@ -235,8 +248,34 @@ fun UsageChart(
             }
         }
     }
+
+    pendingHidePackage?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingHidePackage = null },
+            title = { Text("Hide Usage") },
+            text = { Text("Hide ${item.label} from the usage breakdown?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            preferencesManager.setHiddenUsageApp(item.packageName, true)
+                        }
+                        pendingHidePackage = null
+                    }
+                ) {
+                    Text("Hide")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingHidePackage = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun UsageBarRow(
     item: UsageBarItem,
@@ -244,15 +283,19 @@ internal fun UsageBarRow(
     color: Color,
     modifier: Modifier = Modifier,
     showIcon: Boolean = true,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
             .background(MaterialTheme.colorScheme.background.copy(alpha = 0.32f))
             .let { baseModifier ->
-                if (onClick != null) {
-                    baseModifier.clickable(onClick = onClick)
+                if (onClick != null || onLongPress != null) {
+                    baseModifier.combinedClickable(
+                        onClick = { onClick?.invoke() },
+                        onLongClick = { onLongPress?.invoke() }
+                    )
                 } else {
                     baseModifier
                 }

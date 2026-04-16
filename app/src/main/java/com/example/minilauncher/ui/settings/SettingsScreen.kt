@@ -43,6 +43,7 @@ import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.data.UsageRepository
 import java.util.Calendar
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,6 +63,7 @@ fun SettingsScreen(
     val apps by appRepository.apps.collectAsStateWithLifecycle()
     var secretSettingsVisible by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
     var showSetPasswordDialog by remember { mutableStateOf(false) }
     var showChangePasswordDialog by remember { mutableStateOf(false) }
 
@@ -74,6 +76,13 @@ fun SettingsScreen(
     LaunchedEffect(staleHiddenPackages) {
         staleHiddenPackages.forEach { packageName ->
             preferencesManager.setHiddenApp(packageName, false)
+        }
+    }
+
+    LaunchedEffect(secretSettingsVisible) {
+        if (secretSettingsVisible) {
+            delay(100)
+            scrollState.animateScrollTo(scrollState.maxValue)
         }
     }
 
@@ -105,7 +114,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .safeDrawingPadding()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -156,7 +165,7 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(text = "Secret Settings")
+                Text(text = if (secretSettingsVisible) "Hide Secret Settings" else "Secret Settings")
             }
 
             AnimatedVisibility(
