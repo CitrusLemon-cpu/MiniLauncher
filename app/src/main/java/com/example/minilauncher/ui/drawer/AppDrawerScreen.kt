@@ -144,7 +144,7 @@ fun AppDrawerScreen(
                     } else {
                         val added = preferencesManager.addPinnedApp(appInfo.packageName)
                         if (!added) {
-                            Toast.makeText(context, "Maximum 5 pinned apps", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Maximum 10 pinned apps", Toast.LENGTH_SHORT).show()
                         }
                     }
                     selectedApp = null
