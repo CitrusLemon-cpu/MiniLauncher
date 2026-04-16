@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.minilauncher.data.AppRepository
 import com.example.minilauncher.data.PreferencesManager
+import com.example.minilauncher.data.UsageRepository
 import com.example.minilauncher.ui.drawer.AppDrawerScreen
 import com.example.minilauncher.ui.home.HomeScreen
 
@@ -14,6 +15,7 @@ import com.example.minilauncher.ui.home.HomeScreen
 fun MainScreen(
     appRepository: AppRepository,
     preferencesManager: PreferencesManager,
+    usageRepository: UsageRepository,
     onNavigateToSettings: () -> Unit
 ) {
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
@@ -26,6 +28,7 @@ fun MainScreen(
             0 -> HomeScreen(
                 appRepository = appRepository,
                 preferencesManager = preferencesManager,
+                usageRepository = usageRepository,
                 modifier = Modifier.fillMaxSize()
             )
 
