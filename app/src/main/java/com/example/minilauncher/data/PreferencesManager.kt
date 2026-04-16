@@ -148,7 +148,7 @@ class PreferencesManager private constructor(
     }
 
     companion object {
-        private const val MAX_PINNED_APPS = 10
+        private const val MAX_PINNED_APPS = 25
         private val PINNED_APPS = stringSetPreferencesKey("pinned_apps")
         private val HIDDEN_APPS = stringSetPreferencesKey("hidden_apps")
         private val HIDDEN_USAGE_APPS = stringSetPreferencesKey("hidden_usage_apps")
