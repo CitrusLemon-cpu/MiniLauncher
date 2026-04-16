@@ -151,6 +151,7 @@ fun SettingsScreen(
             UsageHistoryCalendar(
                 appRepository = appRepository,
                 usageRepository = usageRepository,
+                preferencesManager = preferencesManager,
                 hiddenUsageApps = hiddenUsageApps,
                 weekStartDay = weekStartDay,
                 showIcons = showIcons,
