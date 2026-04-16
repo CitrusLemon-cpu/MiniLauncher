@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.example.minilauncher.data.AppRepository
+import com.example.minilauncher.data.PreferencesManager
 import com.example.minilauncher.data.UsageRepository
 import com.example.minilauncher.ui.home.UsageBarItem
 import com.example.minilauncher.ui.home.UsageBarRow
@@ -46,6 +49,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private data class UsageHistoryDetailState(
@@ -62,6 +66,7 @@ private data class UsageHistoryDetailState(
 fun UsageHistoryCalendar(
     appRepository: AppRepository,
     usageRepository: UsageRepository,
+    preferencesManager: PreferencesManager,
     hiddenUsageApps: Set<String>,
     weekStartDay: Int,
     showIcons: Boolean,
@@ -90,6 +95,8 @@ fun UsageHistoryCalendar(
     }
     var isMonthLoading by remember { mutableStateOf(true) }
     var isDetailLoading by remember { mutableStateOf(true) }
+    var pendingHideUsageItem by remember { mutableStateOf<UsageBarItem?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     LifecycleResumeEffect(usageRepository, hiddenUsageApps, weekStartDay) {
         hasUsagePermission = usageRepository.hasUsagePermission()
@@ -203,15 +210,42 @@ fun UsageHistoryCalendar(
                 DayBreakdownSection(
                     detailState = detailState,
                     showIcons = showIcons,
-                    showZeroMinuteApps = showZeroMinuteApps
+                    showZeroMinuteApps = showZeroMinuteApps,
+                    onLongPressItem = { pendingHideUsageItem = it }
                 )
                 WeekSummarySection(
                     detailState = detailState,
                     showIcons = showIcons,
-                    showZeroMinuteApps = showZeroMinuteApps
+                    showZeroMinuteApps = showZeroMinuteApps,
+                    onLongPressItem = { pendingHideUsageItem = it }
                 )
             }
         }
+    }
+
+    pendingHideUsageItem?.let { item ->
+        AlertDialog(
+            onDismissRequest = { pendingHideUsageItem = null },
+            title = { Text("Hide Usage") },
+            text = { Text("Hide ${item.label} from the usage breakdown?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            preferencesManager.setHiddenUsageApp(item.packageName, true)
+                        }
+                        pendingHideUsageItem = null
+                    }
+                ) {
+                    Text("Hide")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingHideUsageItem = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -351,7 +385,8 @@ private fun CalendarMonthGrid(
 private fun DayBreakdownSection(
     detailState: UsageHistoryDetailState,
     showIcons: Boolean,
-    showZeroMinuteApps: Boolean
+    showZeroMinuteApps: Boolean,
+    onLongPressItem: (UsageBarItem) -> Unit
 ) {
     val formatter = remember { DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.getDefault()) }
     var isExpanded by remember(detailState.selectedDate) { mutableStateOf(false) }
@@ -391,7 +426,8 @@ private fun DayBreakdownSection(
                     fraction = normalizedDuration(item.duration, maxDuration),
                     color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
                     showIcon = showIcons,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    onLongPress = { onLongPressItem(item) }
                 )
             }
 
@@ -411,7 +447,8 @@ private fun DayBreakdownSection(
 private fun WeekSummarySection(
     detailState: UsageHistoryDetailState,
     showIcons: Boolean,
-    showZeroMinuteApps: Boolean
+    showZeroMinuteApps: Boolean,
+    onLongPressItem: (UsageBarItem) -> Unit
 ) {
     val rangeFormatter = remember { DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()) }
     val filteredEntries = remember(detailState.weekEntries, showZeroMinuteApps) {
@@ -453,7 +490,8 @@ private fun WeekSummarySection(
                     fraction = normalizedDuration(item.duration, maxDuration),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
                     showIcon = showIcons,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    onLongPress = { onLongPressItem(item) }
                 )
             }
         }

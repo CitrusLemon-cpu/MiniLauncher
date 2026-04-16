@@ -54,9 +54,11 @@ fun SecretSettingsSection(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val apps by appRepository.apps.collectAsStateWithLifecycle()
     val hiddenApps by preferencesManager.hiddenApps.collectAsStateWithLifecycle(initialValue = emptySet())
+    val hiddenUsageApps by preferencesManager.hiddenUsageApps.collectAsStateWithLifecycle(initialValue = emptySet())
     val preventDeletion by preferencesManager.preventDeletion.collectAsStateWithLifecycle(initialValue = false)
     val passwordHash by preferencesManager.passwordHash.collectAsStateWithLifecycle(initialValue = "")
     var pendingUnhideApp by remember { mutableStateOf<AppInfo?>(null) }
+    var pendingUnhideUsageApp by remember { mutableStateOf<AppInfo?>(null) }
     var showRemovePasswordDialog by remember { mutableStateOf(false) }
     var showNavigationHintDialog by remember { mutableStateOf(false) }
 
@@ -72,6 +74,13 @@ fun SecretSettingsSection(
             apps.none { it.packageName == packageName } && appRepository.getAppInfo(packageName) == null
         }
     }
+    val hiddenUsageAppItems = remember(apps, hiddenUsageApps) {
+        hiddenUsageApps
+            .mapNotNull { packageName ->
+                apps.firstOrNull { it.packageName == packageName } ?: appRepository.getAppInfo(packageName)
+            }
+            .sortedBy { it.label.lowercase(Locale.getDefault()) }
+    }
 
     LaunchedEffect(staleHiddenPackages) {
         staleHiddenPackages.forEach { packageName ->
@@ -86,6 +95,11 @@ fun SecretSettingsSection(
         HiddenAppsSection(
             hiddenApps = hiddenAppItems,
             onLongPress = { pendingUnhideApp = it }
+        )
+
+        HiddenUsageAppsSection(
+            hiddenUsageApps = hiddenUsageAppItems,
+            onLongPress = { pendingUnhideUsageApp = it }
         )
 
         SecretToggleRow(
@@ -152,6 +166,31 @@ fun SecretSettingsSection(
             },
             dismissButton = {
                 TextButton(onClick = { pendingUnhideApp = null }) {
+                    Text(text = "Cancel")
+                }
+            }
+        )
+    }
+
+    pendingUnhideUsageApp?.let { appInfo ->
+        AlertDialog(
+            onDismissRequest = { pendingUnhideUsageApp = null },
+            title = { Text(text = "Show ${appInfo.label} Usage?") },
+            text = { Text(text = "This will show ${appInfo.label} in the usage breakdown again.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            preferencesManager.setHiddenUsageApp(appInfo.packageName, false)
+                            pendingUnhideUsageApp = null
+                        }
+                    }
+                ) {
+                    Text(text = "Show")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingUnhideUsageApp = null }) {
                     Text(text = "Cancel")
                 }
             }
@@ -242,6 +281,47 @@ private fun HiddenAppsSection(
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 hiddenApps.forEach { appInfo ->
+                    HiddenAppRow(
+                        appInfo = appInfo,
+                        onLongPress = { onLongPress(appInfo) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HiddenUsageAppsSection(
+    hiddenUsageApps: List<AppInfo>,
+    onLongPress: (AppInfo) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Hidden Usage Apps",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            HiddenAppsCountBadge(count = hiddenUsageApps.size)
+        }
+
+        if (hiddenUsageApps.isEmpty()) {
+            Text(
+                text = "No hidden usage apps",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                hiddenUsageApps.forEach { appInfo ->
                     HiddenAppRow(
                         appInfo = appInfo,
                         onLongPress = { onLongPress(appInfo) }
