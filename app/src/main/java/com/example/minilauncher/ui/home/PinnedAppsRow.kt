@@ -44,8 +44,7 @@ fun PinnedAppsRow(
     val pinnedApps = pinnedPackages.mapNotNull { packageName ->
         apps.firstOrNull { it.packageName == packageName } ?: appRepository.getAppInfo(packageName)
     }
-    val firstRowApps = pinnedApps.take(5)
-    val secondRowApps = pinnedApps.drop(5).take(5)
+    val rows = pinnedApps.chunked(5)
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -62,14 +61,9 @@ fun PinnedAppsRow(
                 }
             }
         } else {
-            PinnedAppsGridRow(
-                pinnedApps = firstRowApps,
-                onLaunchApp = appRepository::launchApp,
-                onAppLongPress = onAppLongPress
-            )
-            if (secondRowApps.isNotEmpty()) {
+            rows.forEach { rowApps ->
                 PinnedAppsGridRow(
-                    pinnedApps = secondRowApps,
+                    pinnedApps = rowApps,
                     onLaunchApp = appRepository::launchApp,
                     onAppLongPress = onAppLongPress
                 )
