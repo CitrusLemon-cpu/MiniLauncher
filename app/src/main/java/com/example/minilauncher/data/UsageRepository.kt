@@ -10,6 +10,7 @@ import java.time.ZoneId
 class UsageRepository private constructor(private val context: Context) {
     private val usageStatsManager =
         context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+    private val ownPackageName = context.packageName
 
     fun hasUsagePermission(): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -59,6 +60,7 @@ class UsageRepository private constructor(private val context: Context) {
                 .queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startMillis, endMillis)
                 .orEmpty()
                 .asSequence()
+                .filter { stat -> stat.packageName != ownPackageName }
                 .groupBy { stat -> stat.packageName }
                 .mapValues { (_, usageStats) ->
                     usageStats.sumOf { stat -> stat.totalTimeInForeground }

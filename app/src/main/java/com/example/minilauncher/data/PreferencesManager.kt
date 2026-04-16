@@ -48,6 +48,10 @@ class PreferencesManager private constructor(
         .catchPreferences()
         .map { preferences -> preferences[PASSWORD_HASH] ?: "" }
 
+    val hasSeenLauncherPrompt: Flow<Boolean> = context.dataStore.data
+        .catchPreferences()
+        .map { preferences -> preferences[HAS_SEEN_LAUNCHER_PROMPT] ?: false }
+
     suspend fun addPinnedApp(packageName: String): Boolean {
         var added = false
         context.dataStore.edit { preferences ->
@@ -107,6 +111,12 @@ class PreferencesManager private constructor(
         }
     }
 
+    suspend fun setHasSeenLauncherPrompt(seen: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[HAS_SEEN_LAUNCHER_PROMPT] = seen
+        }
+    }
+
     private fun Flow<Preferences>.catchPreferences(): Flow<Preferences> {
         return catch { throwable ->
             if (throwable is IOException) {
@@ -136,6 +146,7 @@ class PreferencesManager private constructor(
         private val PREVENT_DELETION = booleanPreferencesKey("prevent_deletion")
         private val WEEK_START_DAY = intPreferencesKey("week_start_day")
         private val PASSWORD_HASH = stringPreferencesKey("password_hash")
+        private val HAS_SEEN_LAUNCHER_PROMPT = booleanPreferencesKey("has_seen_launcher_prompt")
 
         @Volatile
         private var instance: PreferencesManager? = null
