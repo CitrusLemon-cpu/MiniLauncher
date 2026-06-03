@@ -79,6 +79,16 @@ class PreferencesManager private constructor(
         }
     }
 
+    suspend fun cleanStalePinnedApps(installedPackages: Set<String>) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[PINNED_APPS] ?: emptySet()
+            val cleaned = current.intersect(installedPackages)
+            if (cleaned.size < current.size) {
+                preferences[PINNED_APPS] = cleaned
+            }
+        }
+    }
+
     suspend fun setHiddenApp(packageName: String, hidden: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[HIDDEN_APPS] = preferences[HIDDEN_APPS].mutated(packageName, hidden)

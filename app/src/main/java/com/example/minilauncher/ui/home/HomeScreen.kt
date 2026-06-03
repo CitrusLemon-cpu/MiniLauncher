@@ -63,7 +63,7 @@ fun HomeScreen(
         onPauseOrDispose { }
     }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .safeDrawingPadding()
@@ -71,16 +71,15 @@ fun HomeScreen(
     ) {
         ClockDisplay(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .fillMaxWidth()
                 .padding(top = 36.dp)
         )
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
-                .align(Alignment.TopCenter)
-                .padding(top = 140.dp)
+                .weight(1f)
+                .padding(top = 16.dp, bottom = 8.dp)
         ) {
             if (hasUsagePermission) {
                 UsageChart(
@@ -103,7 +102,7 @@ fun HomeScreen(
             preferencesManager = preferencesManager,
             onAppLongPress = { appInfo -> selectedPinnedApp = appInfo },
             modifier = Modifier
-                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
                 .padding(bottom = 8.dp)
         )
     }

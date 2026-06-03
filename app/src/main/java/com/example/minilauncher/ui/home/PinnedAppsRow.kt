@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,13 @@ fun PinnedAppsRow(
 ) {
     val apps by appRepository.apps.collectAsStateWithLifecycle()
     val pinnedPackages by preferencesManager.pinnedApps.collectAsStateWithLifecycle(initialValue = emptySet())
+    LaunchedEffect(pinnedPackages, apps) {
+        if (apps.isNotEmpty()) {
+            val installedPackageNames = apps.map { it.packageName }.toSet()
+            preferencesManager.cleanStalePinnedApps(installedPackageNames)
+        }
+    }
+
     val pinnedApps = pinnedPackages.mapNotNull { packageName ->
         apps.firstOrNull { it.packageName == packageName } ?: appRepository.getAppInfo(packageName)
     }
