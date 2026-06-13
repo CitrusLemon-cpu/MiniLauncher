@@ -38,16 +38,13 @@ class UsageRepository private constructor(private val context: Context) {
         if (end.isBefore(start)) {
             return emptyMap()
         }
-
-        val aggregated = mutableMapOf<String, Long>()
-        var current = start
-        while (!current.isAfter(end)) {
-            getUsageForDay(current).forEach { (packageName, duration) ->
-                aggregated[packageName] = (aggregated[packageName] ?: 0L) + duration
-            }
-            current = current.plusDays(1)
-        }
-        return aggregated.filterValues { duration -> duration > 0L }
+        val zoneId = ZoneId.systemDefault()
+        val startMillis = start.atStartOfDay(zoneId).toInstant().toEpochMilli()
+        val endMillis = minOf(
+            end.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli(),
+            System.currentTimeMillis()
+        )
+        return queryUsage(startMillis = startMillis, endMillis = endMillis)
     }
 
     private fun queryUsage(startMillis: Long, endMillis: Long): Map<String, Long> {
@@ -63,7 +60,9 @@ class UsageRepository private constructor(private val context: Context) {
                 .filter { stat -> stat.packageName != ownPackageName }
                 .groupBy { stat -> stat.packageName }
                 .mapValues { (_, usageStats) ->
-                    usageStats.sumOf { stat -> stat.totalTimeInForeground }
+                    usageStats
+                        .distinctBy { stat -> stat.firstTimeStamp }
+                        .sumOf { stat -> stat.totalTimeInForeground }
                 }
                 .filterValues { duration -> duration > 0L }
         }.getOrDefault(emptyMap())
